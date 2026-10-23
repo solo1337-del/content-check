@@ -58,6 +58,13 @@
   .progress i { display: block; height: 100%; background: #fff; width: 0; }
   #setup .drop { border: 2px dashed var(--line); border-radius: 10px; padding: 20px 10px; text-align: center; }
   #fileInput { display: none; }
+  .cam-btn { width: 100%; margin-top: 8px; padding: 12px; font-weight: 600; }
+  #camera { position: fixed; inset: 0; z-index: 20; background: #000; display: flex; flex-direction: column; }
+  #camera .bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; color: #fff; }
+  #camera .bar b { font-size: 16px; }
+  #reader { flex: 1; width: 100%; overflow: hidden; display: flex; align-items: center; }
+  #reader video { width: 100% !important; height: auto !important; }
+  #camMsg { color: #fff; text-align: center; font-size: 14px; padding: 12px 16px 20px; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -89,7 +96,8 @@
         <button id="kbBtn" class="ghost" title="Type manually">⌨</button>
         <button id="goBtn">Go</button>
       </div>
-      <div class="hint">Press the yellow scan button and aim at the box label.</div>
+      <button id="camBtn" class="cam-btn">📷 Scan with camera</button>
+      <div class="hint">On the Zebra, press the yellow scan button. On a phone, tap Scan with camera.</div>
     </div>
 
     <div id="status" class="status"></div>
@@ -116,6 +124,13 @@
     </div>
   </section>
 </main>
+
+<!-- Phone camera scanner -->
+<div id="camera" class="hidden">
+  <div class="bar"><b>Scan box label</b> <button id="camClose" class="ghost small">Close</button></div>
+  <div id="reader"></div>
+  <div id="camMsg">Hold the barcode inside the box, about 15–20 cm away.</div>
+</div>
 
 <script>
 (function () {
@@ -319,7 +334,70 @@
 
   // Keep the scan field focused so DataWedge keystrokes always land in it.
   // inputmode="none" stops the soft keyboard from covering the screen; the ⌨ button turns it back on.
-  function focusScan() { if (!$("scanner").classList.contains("hidden")) scanEl.focus(); }
+  function focusScan() {
+    if (!$("scanner").classList.contains("hidden") && $("camera").classList.contains("hidden")) scanEl.focus();
+  }
+
+  // ---------- phone camera ----------
+  // The barcode library is only loaded when the camera is first used, so the Zebra never downloads it.
+  var CAM_LIB = "https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js";
+  var cam = null, camBusy = false;
+
+  function loadScript(src, cb) {
+    if (window.Html5Qrcode) return cb(null);
+    var s = document.createElement("script");
+    s.src = src;
+    s.onload = function () { cb(null); };
+    s.onerror = function () { cb(new Error("Could not load the camera scanner. Check the internet connection.")); };
+    document.head.appendChild(s);
+  }
+
+  function openCamera() {
+    $("camera").classList.remove("hidden");
+    $("camMsg").textContent = "Starting camera…";
+    scanEl.blur();
+    loadScript(CAM_LIB, function (err) {
+      if (err) { $("camMsg").textContent = err.message; return; }
+      var F = window.Html5QrcodeSupportedFormats;
+      cam = new window.Html5Qrcode("reader", {
+        verbose: false,
+        formatsToSupport: [F.CODE_128, F.CODE_39, F.CODE_93, F.ITF, F.CODABAR, F.EAN_13, F.QR_CODE, F.DATA_MATRIX],
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+      });
+      camBusy = false;
+      cam.start(
+        { facingMode: "environment" },
+        {
+          fps: 12,
+          // Wide, short box: box labels carry long 1D barcodes.
+          qrbox: function (w, h) { return { width: Math.floor(w * 0.9), height: Math.floor(Math.min(h, w) * 0.45) }; }
+        },
+        function (text) {
+          if (camBusy) return;
+          camBusy = true;
+          closeCamera(function () { lookup(text); });
+        },
+        function () { /* no barcode in this frame */ }
+      ).then(function () {
+        $("camMsg").textContent = "Hold the barcode inside the box, about 15–20 cm away.";
+      }).catch(function (e) {
+        var msg = String(e && e.name || e);
+        $("camMsg").textContent = /NotAllowed|Permission/i.test(msg)
+          ? "Camera permission was blocked. Allow camera access for this site in the browser settings."
+          : "Could not start the camera (" + msg + ").";
+      });
+    });
+  }
+
+  function closeCamera(done) {
+    var finish = function () {
+      $("camera").classList.add("hidden");
+      if (cam) { try { cam.clear(); } catch (e) { /* ignore */ } cam = null; }
+      if (done) done();
+      focusScan();
+    };
+    if (cam && cam.isScanning) cam.stop().then(finish, finish); else finish();
+  }
 
   // ---------- events ----------
   $("pickBtn").addEventListener("click", function () { $("fileInput").click(); });
@@ -346,6 +424,8 @@
   });
 
   $("goBtn").addEventListener("click", function () { lookup(scanEl.value); focusScan(); });
+  $("camBtn").addEventListener("click", openCamera);
+  $("camClose").addEventListener("click", function () { closeCamera(); });
   $("kbBtn").addEventListener("click", function () {
     var manual = scanEl.getAttribute("inputmode") === "none";
     scanEl.setAttribute("inputmode", manual ? "text" : "none");
