@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0b5cab">
+<title>Box Scanner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #f3f5f8; --card: #fff; --text: #17202b; --muted: #5d6b7a; --line: #dde3ea;
+    --brand: #0b5cab; --ok: #157347; --ok-bg: #e3f4ea; --err: #b42318; --err-bg: #fde8e6;
+    --dup: #9a6700; --dup-bg: #fff4d6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  header { background: var(--brand); color: #fff; padding: 10px 12px; position: sticky; top: 0; z-index: 5; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+  header .sub { font-size: 12px; opacity: .85; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  main { padding: 10px; max-width: 720px; margin: 0 auto; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .scan-row { display: flex; gap: 6px; }
+  #scan { flex: 1; min-width: 0; font-size: 18px; padding: 12px; border: 2px solid var(--brand); border-radius: 8px;
+    font-family: ui-monospace, "Roboto Mono", monospace; text-transform: uppercase; }
+  #scan:focus { outline: none; box-shadow: 0 0 0 3px rgba(11,92,171,.25); }
+  button { font: inherit; font-size: 15px; border: 0; border-radius: 8px; padding: 10px 12px; background: var(--brand); color: #fff; }
+  button.ghost { background: #e8eef6; color: var(--brand); }
+  button.small { padding: 6px 10px; font-size: 13px; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .status { border-radius: 10px; padding: 12px; margin-bottom: 10px; font-weight: 600; display: none; }
+  .status.ok { display: block; background: var(--ok-bg); color: var(--ok); }
+  .status.err { display: block; background: var(--err-bg); color: var(--err); }
+  .status.dup { display: block; background: var(--dup-bg); color: var(--dup); }
+  .box-no { font-family: ui-monospace, "Roboto Mono", monospace; font-size: 17px; word-break: break-all; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .stat { background: var(--bg); border-radius: 8px; padding: 8px; text-align: center; }
+  .stat b { display: block; font-size: 22px; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .meta { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .item { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+  .item:first-child { border-top: 0; }
+  .item .info { flex: 1; min-width: 0; }
+  .item .desc { font-weight: 600; font-size: 15px; }
+  .item .code { font-size: 12px; color: var(--muted); font-family: ui-monospace, "Roboto Mono", monospace; }
+  .qty { min-width: 58px; text-align: center; background: var(--brand); color: #fff; border-radius: 8px; padding: 6px 4px; }
+  .qty b { display: block; font-size: 22px; line-height: 1; }
+  .qty span { font-size: 10px; letter-spacing: .04em; }
+  .item.checked { opacity: .45; }
+  .item.checked .qty { background: var(--ok); }
+  .item.checked .desc { text-decoration: line-through; }
+  .section-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px; display: flex; justify-content: space-between; align-items: center; }
+  .history a { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); color: var(--text); text-decoration: none; font-size: 14px; }
+  .history a:first-child { border-top: 0; }
+  .history .t { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 18px 6px; }
+  .progress { height: 6px; background: rgba(255,255,255,.3); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .progress i { display: block; height: 100%; background: #fff; width: 0; }
+  #setup .drop { border: 2px dashed var(--line); border-radius: 10px; padding: 20px 10px; text-align: center; }
+  #fileInput { display: none; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1><span>Box Scanner</span> <button id="menuBtn" class="ghost small hidden">Change file</button></h1>
+  <div class="sub" id="headerSub">No delivery file loaded</div>
+  <div class="progress hidden" id="progress"><i id="progressBar"></i></div>
+</header>
+
+<main>
+  <!-- Step 1: load the delivery details file -->
+  <section id="setup" class="card">
+    <p class="section-title">Load delivery file</p>
+    <div class="drop">
+      <p style="margin:0 0 10px">Choose the <b>deliverydetails.xlsx</b> file for this shipment.</p>
+      <button id="pickBtn">Choose file</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      <p class="hint" id="setupMsg">The file is kept on this device, so you only load it once per shipment.</p>
+    </div>
+  </section>
+
+  <!-- Step 2: scan -->
+  <section id="scanner" class="hidden">
+    <div class="card">
+      <div class="scan-row">
+        <input id="scan" type="text" inputmode="none" autocomplete="off" autocapitalize="characters"
+               spellcheck="false" placeholder="Scan box nbr">
+        <button id="kbBtn" class="ghost" title="Type manually">⌨</button>
+        <button id="goBtn">Go</button>
+      </div>
+      <div class="hint">Press the yellow scan button and aim at the box label.</div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div id="result" class="card hidden">
+      <p class="section-title"><span>Box</span> <button id="clearBtn" class="ghost small">Clear</button></p>
+      <div class="box-no" id="resBox"></div>
+      <div class="stats">
+        <div class="stat"><b id="resLines">0</b><span>Lines</span></div>
+        <div class="stat"><b id="resQty">0</b><span>Total qty</span></div>
+        <div class="stat"><b id="resChecked">0</b><span>Checked</span></div>
+      </div>
+      <div class="meta" id="resMeta"></div>
+    </div>
+
+    <div id="itemsCard" class="card hidden">
+      <p class="section-title"><span>Contents</span><span style="text-transform:none;font-weight:400">tap a line to tick it</span></p>
+      <div id="items"></div>
+    </div>
+
+    <div class="card">
+      <p class="section-title"><span>Scanned boxes</span> <button id="resetBtn" class="ghost small">Reset</button></p>
+      <div id="history" class="history"><div class="empty">No boxes scanned yet.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORE_KEY = "boxScanner.data.v1";
+  var HIST_KEY = "boxScanner.history.v1";
+  var CHECK_KEY = "boxScanner.checked.v1";
+
+  var data = null;        // { fileName, loadedAt, boxes: { BOXNBR: [items] }, boxCount, shipment, bol }
+  var history = [];       // [{ box, at }]
+  var checked = {};       // { "BOX|index": true }
+  var currentBox = null;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var scanEl = $("scan");
+
+  // ---------- storage (wrapped: may be unavailable) ----------
+  function load(key) { try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* ignore */ } }
+  function drop(key) { try { localStorage.removeItem(key); } catch (e) { /* ignore */ } }
+
+  function norm(v) { return String(v == null ? "" : v).replace(/ /g, " ").trim(); }
+  function normBox(v) { return norm(v).toUpperCase().replace(/\s+/g, ""); }
+  function num(v) { var n = parseFloat(norm(v).replace(/,/g, "")); return isNaN(n) ? 0 : n; }
+  function fmt(n) { return (Math.round(n * 100) / 100).toLocaleString(); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+
+  // ---------- parse the WMS "delivery details" report ----------
+  // The sheet has a HEADER block and a DETAIL block; we locate the DETAIL header row
+  // by the "PLASTIC BOX NBR" column and map every column by its name.
+  function parseWorkbook(wb, fileName) {
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" });
+
+    var hdrIdx = -1, cols = {};
+    for (var r = 0; r < rows.length; r++) {
+      var row = rows[r];
+      for (var c = 0; c < row.length; c++) {
+        if (norm(row[c]).toUpperCase() === "PLASTIC BOX NBR") { hdrIdx = r; break; }
+      }
+      if (hdrIdx >= 0) break;
+    }
+    if (hdrIdx < 0) throw new Error('Could not find a "PLASTIC BOX NBR" column in this file.');
+
+    rows[hdrIdx].forEach(function (h, c) { var k = norm(h).toUpperCase(); if (k && !(k in cols)) cols[k] = c; });
+    function get(row, name) { return name in cols ? norm(row[cols[name]]) : ""; }
+
+    var boxes = {}, count = 0, shipment = "", bol = "";
+    for (var i = hdrIdx + 1; i < rows.length; i++) {
+      var rr = rows[i];
+      var box = normBox(get(rr, "PLASTIC BOX NBR"));
+      if (!box) {
+        if (rr.join("").indexOf("End of Report") >= 0) break;
+        continue;
+      }
+      var item = {
+        item: get(rr, "ITEM PART A"),
+        desc: get(rr, "SHORT DESC"),
+        qty: num(get(rr, "SHIPPED QTY")),
+        price: num(get(rr, "SELLING RETAIL")),
+        total: num(get(rr, "TOTAL SELLING RETAIL")),
+        order: get(rr, "ORDER NBR"),
+        toLoc: get(rr, "TO LOC")
+      };
+      shipment = shipment || get(rr, "SHIPMENT NBR");
+      bol = bol || get(rr, "BOL NBR");
+      if (!boxes[box]) { boxes[box] = []; count++; }
+      boxes[box].push(item);
+    }
+    if (!count) throw new Error("No box lines were found under the DETAIL section.");
+    return { fileName: fileName, loadedAt: Date.now(), boxes: boxes, boxCount: count, shipment: shipment, bol: bol };
+  }
+
+  function handleFile(file) {
+    if (!file) return;
+    if (typeof XLSX === "undefined") { $("setupMsg").textContent = "Spreadsheet reader did not load. Check the internet connection and reload."; return; }
+    $("setupMsg").textContent = "Reading " + file.name + " …";
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+        data = parseWorkbook(wb, file.name);
+        history = []; checked = {};
+        save(STORE_KEY, data); save(HIST_KEY, history); save(CHECK_KEY, checked);
+        showScanner();
+        setStatus("ok", "Loaded " + data.boxCount + " boxes from " + esc(file.name) + ". Ready to scan.");
+      } catch (err) {
+        $("setupMsg").textContent = err.message || String(err);
+      }
+    };
+    reader.onerror = function () { $("setupMsg").textContent = "Could not read the file."; };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ---------- UI ----------
+  function setStatus(kind, html) { var s = $("status"); s.className = "status " + kind; s.innerHTML = html; }
+
+  function updateHeader() {
+    if (!data) { $("headerSub").textContent = "No delivery file loaded"; $("progress").classList.add("hidden"); return; }
+    var seen = {}; history.forEach(function (h) { if (data.boxes[h.box]) seen[h.box] = 1; });
+    var n = Object.keys(seen).length;
+    $("headerSub").textContent = (data.shipment || data.fileName) + " · " + n + " / " + data.boxCount + " boxes scanned";
+    $("progress").classList.remove("hidden");
+    $("progressBar").style.width = (100 * n / data.boxCount) + "%";
+  }
+
+  function showScanner() {
+    $("setup").classList.add("hidden");
+    $("scanner").classList.remove("hidden");
+    $("menuBtn").classList.remove("hidden");
+    renderHistory(); updateHeader(); focusScan();
+  }
+
+  function showSetup() {
+    $("scanner").classList.add("hidden");
+    $("setup").classList.remove("hidden");
+    $("menuBtn").classList.add("hidden");
+    $("setupMsg").textContent = data ? "Current file: " + data.fileName + ". Choose a new file to replace it." : "The file is kept on this device, so you only load it once per shipment.";
+  }
+
+  function lookup(raw) {
+    var box = normBox(raw);
+    scanEl.value = "";
+    if (!box || !data) return;
+    var items = data.boxes[box];
+    if (!items) {
+      currentBox = null;
+      $("result").classList.add("hidden"); $("itemsCard").classList.add("hidden");
+      setStatus("err", "Box <span class=\"box-no\">" + esc(box) + "</span> is not in this delivery.");
+      beep(false);
+      return;
+    }
+    var already = history.some(function (h) { return h.box === box; });
+    history = history.filter(function (h) { return h.box !== box; });
+    history.unshift({ box: box, at: Date.now() });
+    save(HIST_KEY, history);
+
+    if (already) setStatus("dup", "Box already scanned before — showing it again.");
+    else setStatus("ok", "Box found ✓");
+    beep(true);
+    renderBox(box);
+    renderHistory(); updateHeader();
+  }
+
+  function renderBox(box) {
+    currentBox = box;
+    var items = data.boxes[box];
+    var qty = 0, value = 0, orders = {};
+    items.forEach(function (it) { qty += it.qty; value += it.total; if (it.order) orders[it.order] = 1; });
+
+    $("resBox").textContent = box;
+    $("resLines").textContent = items.length;
+    $("resQty").textContent = fmt(qty);
+    var orderList = Object.keys(orders);
+    $("resMeta").textContent = (orderList.length ? "Order " + orderList.join(", ") + " · " : "") +
+      (items[0].toLoc ? "To loc " + items[0].toLoc + " · " : "") + "Retail value " + fmt(value);
+
+    $("items").innerHTML = items.map(function (it, i) {
+      var on = checked[box + "|" + i] ? " checked" : "";
+      return '<div class="item' + on + '" data-i="' + i + '">' +
+        '<div class="info"><div class="desc">' + esc(it.desc || "(no description)") + '</div>' +
+        '<div class="code">' + esc(it.item) + '</div></div>' +
+        '<div class="qty"><b>' + fmt(it.qty) + '</b><span>SHIPPED</span></div></div>';
+    }).join("");
+    updateChecked();
+    $("result").classList.remove("hidden");
+    $("itemsCard").classList.remove("hidden");
+  }
+
+  function updateChecked() {
+    if (!currentBox) return;
+    var n = 0; data.boxes[currentBox].forEach(function (_, i) { if (checked[currentBox + "|" + i]) n++; });
+    $("resChecked").textContent = n + "/" + data.boxes[currentBox].length;
+  }
+
+  function renderHistory() {
+    if (!history.length) { $("history").innerHTML = '<div class="empty">No boxes scanned yet.</div>'; return; }
+    $("history").innerHTML = history.slice(0, 50).map(function (h) {
+      var items = data.boxes[h.box] || [];
+      var q = 0; items.forEach(function (it) { q += it.qty; });
+      var t = new Date(h.at);
+      return '<a href="#" data-box="' + esc(h.box) + '"><span class="box-no" style="font-size:14px">' + esc(h.box) +
+        '</span><span class="t">' + items.length + ' lines · qty ' + fmt(q) + ' · ' +
+        t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + '</span></a>';
+    }).join("");
+  }
+
+  function beep(ok) {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      beep.ctx = beep.ctx || new Ctx();
+      var o = beep.ctx.createOscillator(), g = beep.ctx.createGain();
+      o.frequency.value = ok ? 1400 : 300; g.gain.value = 0.15;
+      o.connect(g); g.connect(beep.ctx.destination);
+      o.start(); o.stop(beep.ctx.currentTime + (ok ? 0.08 : 0.35));
+    } catch (e) { /* ignore */ }
+    if (!ok && navigator.vibrate) navigator.vibrate([150, 80, 150]);
+  }
+
+  // Keep the scan field focused so DataWedge keystrokes always land in it.
+  // inputmode="none" stops the soft keyboard from covering the screen; the ⌨ button turns it back on.
+  function focusScan() { if (!$("scanner").classList.contains("hidden")) scanEl.focus(); }
+
+  // ---------- events ----------
+  $("pickBtn").addEventListener("click", function () { $("fileInput").click(); });
+  $("fileInput").addEventListener("change", function (e) { handleFile(e.target.files[0]); e.target.value = ""; });
+  $("menuBtn").addEventListener("click", showSetup);
+
+  // DataWedge sends the barcode followed by ENTER (default keystroke output).
+  scanEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.keyCode === 13) { e.preventDefault(); lookup(scanEl.value); }
+  });
+  // Fallback when the scanner is configured without an ENTER suffix: look up once input pauses.
+  var idleTimer = null;
+  scanEl.addEventListener("input", function () {
+    clearTimeout(idleTimer);
+    if (scanEl.getAttribute("inputmode") === "none") {
+      idleTimer = setTimeout(function () { if (scanEl.value.trim().length >= 6) lookup(scanEl.value); }, 300);
+    }
+  });
+  scanEl.addEventListener("blur", function () {
+    setTimeout(function () {
+      var a = document.activeElement;
+      if (!a || a === document.body) focusScan();
+    }, 150);
+  });
+
+  $("goBtn").addEventListener("click", function () { lookup(scanEl.value); focusScan(); });
+  $("kbBtn").addEventListener("click", function () {
+    var manual = scanEl.getAttribute("inputmode") === "none";
+    scanEl.setAttribute("inputmode", manual ? "text" : "none");
+    $("kbBtn").style.background = manual ? "var(--brand)" : "";
+    $("kbBtn").style.color = manual ? "#fff" : "";
+    scanEl.blur(); setTimeout(function () { scanEl.focus(); }, 50);
+  });
+  $("clearBtn").addEventListener("click", function () {
+    currentBox = null; $("result").classList.add("hidden"); $("itemsCard").classList.add("hidden");
+    $("status").className = "status"; focusScan();
+  });
+  $("resetBtn").addEventListener("click", function () {
+    if (!confirm("Clear the list of scanned boxes and ticks?")) return;
+    history = []; checked = {}; save(HIST_KEY, history); save(CHECK_KEY, checked);
+    if (currentBox) renderBox(currentBox);
+    renderHistory(); updateHeader(); focusScan();
+  });
+  $("items").addEventListener("click", function (e) {
+    var el = e.target.closest ? e.target.closest(".item") : null;
+    if (!el || !currentBox) return;
+    var k = currentBox + "|" + el.getAttribute("data-i");
+    if (checked[k]) delete checked[k]; else checked[k] = true;
+    el.classList.toggle("checked", !!checked[k]);
+    save(CHECK_KEY, checked); updateChecked(); focusScan();
+  });
+  $("history").addEventListener("click", function (e) {
+    var a = e.target.closest ? e.target.closest("a[data-box]") : null;
+    if (!a) return;
+    e.preventDefault();
+    renderBox(a.getAttribute("data-box"));
+    $("status").className = "status";
+    window.scrollTo(0, 0); focusScan();
+  });
+
+  // ---------- start ----------
+  data = load(STORE_KEY);
+  history = load(HIST_KEY) || [];
+  checked = load(CHECK_KEY) || {};
+  if (data && data.boxes) showScanner(); else { data = null; showSetup(); }
+})();
+</script>
+</body>
+</html>
