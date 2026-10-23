@@ -20,8 +20,12 @@ The page expects DataWedge keystroke output with an Enter suffix, which is the Z
 - The camera runs at up to 1920×1080 with continuous autofocus, so the thin bars on the yellow labels resolve. Light and zoom controls appear when the phone supports them.
 - Only a box number that is in the loaded delivery stops the camera. Other barcodes on the label (the red label, the white label's own code) are shown as ignored, and scanning continues.
 
+## Password
+
+When hosted on Netlify, the site is behind a password, checked by the edge function in `netlify/edge-functions/auth.js`. The password itself is the `BOX_SCAN_PASSWORD` environment variable in the Netlify project settings, never this repository. A correct password unlocks the device for 30 days, `/logout` signs out, and changing the variable signs everyone out.
+
 ## Notes
 
 - No shipment data is stored in this repository. Each device loads its own file.
 - The page loads [SheetJS](https://sheetjs.com/) from cdnjs to read the spreadsheet, so the device needs internet. The camera only works over HTTPS.
-- To host it, turn on GitHub Pages (Settings → Pages → Deploy from branch `main`, folder `/`).
+- Hosted on Netlify at https://box-scan.netlify.app. GitHub Pages would serve the page without the password gate.

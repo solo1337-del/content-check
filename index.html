@@ -3,19 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#0b5cab">
+<meta name="theme-color" content="#114652">
 <title>Box Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
-    --bg: #f3f5f8; --card: #fff; --text: #17202b; --muted: #5d6b7a; --line: #dde3ea;
-    --brand: #0b5cab; --ok: #157347; --ok-bg: #e3f4ea; --err: #b42318; --err-bg: #fde8e6;
-    --dup: #9a6700; --dup-bg: #fff4d6;
+    /* Nahdi identity: deep teal and blue, with the shield's colours as accents */
+    --bg: #F4F8FA; --card: #fff; --text: #424242; --muted: #66757F; --line: #E0EAF1;
+    --header: #114652; --brand: #1D75B9; --brand-soft: #E0EAF1; --sky: #2FA6DE;
+    --ok: #3F7A1F; --ok-bg: #EAF4E1; --ok-badge: #78B745;
+    --err: #9C2322; --err-bg: #FCE9E9; --dup: #9A4F0B; --dup-bg: #FEF0DF;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--text);
-    font: 16px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
-  header { background: var(--brand); color: #fff; padding: 10px 12px; position: sticky; top: 0; z-index: 5; }
+    font: 16px/1.35 Montserrat, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+  header { background: var(--header); color: #fff; padding: 10px 12px 0; position: sticky; top: 0; z-index: 5; }
+  .stripe { display: flex; height: 4px; margin: 8px -12px 0; }
+  .stripe i { flex: 1; }
   header h1 { margin: 0; font-size: 18px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
   header .sub { font-size: 12px; opacity: .85; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   main { padding: 10px; max-width: 720px; margin: 0 auto; }
@@ -23,9 +29,9 @@
   .scan-row { display: flex; gap: 6px; }
   #scan { flex: 1; min-width: 0; font-size: 18px; padding: 12px; border: 2px solid var(--brand); border-radius: 8px;
     font-family: ui-monospace, "Roboto Mono", monospace; text-transform: uppercase; }
-  #scan:focus { outline: none; box-shadow: 0 0 0 3px rgba(11,92,171,.25); }
+  #scan:focus { outline: none; box-shadow: 0 0 0 3px rgba(29,117,185,.25); }
   button { font: inherit; font-size: 15px; border: 0; border-radius: 8px; padding: 10px 12px; background: var(--brand); color: #fff; }
-  button.ghost { background: #e8eef6; color: var(--brand); }
+  button.ghost { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
   button.small { padding: 6px 10px; font-size: 13px; }
   .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
   .status { border-radius: 10px; padding: 12px; margin-bottom: 10px; font-weight: 600; display: none; }
@@ -47,15 +53,15 @@
   .qty b { display: block; font-size: 22px; line-height: 1; }
   .qty span { font-size: 10px; letter-spacing: .04em; }
   .item.checked { opacity: .45; }
-  .item.checked .qty { background: var(--ok); }
+  .item.checked .qty { background: #4E8F2A; }
   .item.checked .desc { text-decoration: line-through; }
   .section-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px; display: flex; justify-content: space-between; align-items: center; }
   .history a { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); color: var(--text); text-decoration: none; font-size: 14px; }
   .history a:first-child { border-top: 0; }
   .history .t { color: var(--muted); font-size: 12px; white-space: nowrap; }
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 18px 6px; }
-  .progress { height: 6px; background: rgba(255,255,255,.3); border-radius: 3px; margin-top: 6px; overflow: hidden; }
-  .progress i { display: block; height: 100%; background: #fff; width: 0; }
+  .progress { height: 6px; background: rgba(255,255,255,.25); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .progress i { display: block; height: 100%; background: var(--ok-badge); width: 0; }
   #setup .drop { border: 2px dashed var(--line); border-radius: 10px; padding: 20px 10px; text-align: center; }
   #fileInput { display: none; }
   .cam-btn { width: 100%; margin-top: 8px; padding: 12px; font-weight: 600; }
@@ -65,12 +71,12 @@
   #reader { flex: 1; width: 100%; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
   #reader video { width: 100% !important; height: 100% !important; object-fit: cover; }
   #reader .guide { position: absolute; left: 4%; right: 4%; top: 50%; height: 26%; transform: translateY(-50%);
-    border: 3px solid #ffd400; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,.35); pointer-events: none; }
+    border: 3px solid #F39623; border-radius: 10px; box-shadow: 0 0 0 9999px rgba(0,0,0,.35); pointer-events: none; }
   #camMsg { color: #fff; text-align: center; font-size: 14px; padding: 10px 16px 6px; min-height: 2.6em; }
   .cam-tools { display: flex; gap: 10px; align-items: center; padding: 6px 16px 18px; color: #fff; font-size: 13px; }
   #zoomWrap { flex: 1; display: flex; gap: 8px; align-items: center; }
   #zoom { flex: 1; }
-  #torchBtn.on { background: #ffd400; color: #000; }
+  #torchBtn.on { background: #F39623; color: #fff; }
   .hidden { display: none !important; }
 </style>
 </head>
@@ -79,6 +85,7 @@
   <h1><span>Box Scanner</span> <button id="menuBtn" class="ghost small hidden">Change file</button></h1>
   <div class="sub" id="headerSub">No delivery file loaded</div>
   <div class="progress hidden" id="progress"><i id="progressBar"></i></div>
+  <div class="stripe"><i style="background:#1D75B9"></i><i style="background:#2FA6DE"></i><i style="background:#3E8891"></i><i style="background:#78B745"></i><i style="background:#CDD854"></i><i style="background:#F39623"></i><i style="background:#E96424"></i><i style="background:#E3272B"></i><i style="background:#803288"></i></div>
 </header>
 
 <main>
@@ -91,6 +98,7 @@
       <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
       <p class="hint" id="setupMsg">The file is kept on this device, so you only load it once per shipment.</p>
     </div>
+    <p class="hint" style="text-align:center;margin-top:12px"><a href="/logout" style="color:var(--brand)">Sign out</a></p>
   </section>
 
   <!-- Step 2: scan -->
