@@ -33,7 +33,7 @@ function loginPage(failed, status) {
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#114652">
+<meta name="theme-color" content="#2C6BA4">
 <meta name="robots" content="noindex">
 <title>Box Scanner · Sign in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,8 +43,8 @@ function loginPage(failed, status) {
   body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px;
     background: #F4F8FA; color: #424242; font: 16px/1.4 Montserrat, system-ui, Roboto, Arial, sans-serif; }
   .card { width: 100%; max-width: 360px; background: #fff; border-radius: 12px; overflow: hidden;
-    box-shadow: 0 4px 30px rgba(17,70,82,.12); }
-  .top { background: #114652; color: #fff; padding: 18px 20px 16px; }
+    box-shadow: 0 4px 30px rgba(0,0,0,.08); }
+  .top { background: #2C6BA4; color: #fff; padding: 18px 20px 16px; }
   .top h1 { margin: 0; font-size: 20px; }
   .top p { margin: 4px 0 0; font-size: 13px; opacity: .8; }
   .stripe { display: flex; height: 5px; }
@@ -52,9 +52,9 @@ function loginPage(failed, status) {
   form { padding: 20px; }
   label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
   input { width: 100%; font: inherit; font-size: 18px; padding: 12px; border: 2px solid #E0EAF1; border-radius: 8px; }
-  input:focus { outline: none; border-color: #1D75B9; }
+  input:focus { outline: none; border-color: #2C6BA4; }
   button { width: 100%; margin-top: 14px; font: inherit; font-weight: 700; font-size: 16px; padding: 12px;
-    border: 0; border-radius: 8px; background: #1D75B9; color: #fff; }
+    border: 0; border-radius: 6px; background: #2C6BA4; color: #fff; }
   .err { background: #FCE9E9; color: #9C2322; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-weight: 600; margin-bottom: 14px; }
 </style>
 </head><body>

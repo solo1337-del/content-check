@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#114652">
+<meta name="theme-color" content="#2C6BA4">
 <title>Box Scanner</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
-    /* Nahdi identity: deep teal and blue, with the shield's colours as accents */
+    /* Nahdi identity: the nahdionline.com UI blue, with the logo shield's colours as accents */
     --bg: #F4F8FA; --card: #fff; --text: #424242; --muted: #66757F; --line: #E0EAF1;
-    --header: #114652; --brand: #1D75B9; --brand-soft: #E0EAF1; --sky: #2FA6DE;
+    --header: #2C6BA4; --brand: #2C6BA4; --brand-dark: #23578A; --brand-soft: #E0EAF1;
     --ok: #3F7A1F; --ok-bg: #EAF4E1; --ok-badge: #78B745;
     --err: #9C2322; --err-bg: #FCE9E9; --dup: #9A4F0B; --dup-bg: #FEF0DF;
   }
@@ -29,9 +29,11 @@
   .scan-row { display: flex; gap: 6px; }
   #scan { flex: 1; min-width: 0; font-size: 18px; padding: 12px; border: 2px solid var(--brand); border-radius: 8px;
     font-family: ui-monospace, "Roboto Mono", monospace; text-transform: uppercase; }
-  #scan:focus { outline: none; box-shadow: 0 0 0 3px rgba(29,117,185,.25); }
-  button { font: inherit; font-size: 15px; border: 0; border-radius: 8px; padding: 10px 12px; background: var(--brand); color: #fff; }
-  button.ghost { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  #scan:focus { outline: none; box-shadow: 0 0 0 3px rgba(44,107,164,.25); }
+  button { font: inherit; font-size: 15px; font-weight: 600; border: 1px solid var(--brand); border-radius: 6px; padding: 10px 12px; background: var(--brand); color: #fff; }
+  button:active { background: var(--brand-dark); }
+  button.ghost { background: #fff; color: var(--brand); }
+  button.ghost:active { background: var(--brand-soft); }
   button.small { padding: 6px 10px; font-size: 13px; }
   .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
   .status { border-radius: 10px; padding: 12px; margin-bottom: 10px; font-weight: 600; display: none; }
