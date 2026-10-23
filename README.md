@@ -14,8 +14,14 @@ For each box the page shows the item lines, the total shipped quantity, the orde
 
 The page expects DataWedge keystroke output with an Enter suffix, which is the Zebra default. Without the Enter suffix it still looks the box up once input pauses. The on-screen keyboard stays hidden while scanning; tap ⌨ to type a box number by hand.
 
+## Camera scanning
+
+- Android Chrome uses the phone's built-in barcode reader. Other browsers (iPhone, desktop) load [barcode-detector](https://github.com/Sec-ant/barcode-detector), which runs zxing-cpp in WebAssembly, the first time the camera opens.
+- The camera runs at up to 1920×1080 with continuous autofocus, so the thin bars on the yellow labels resolve. Light and zoom controls appear when the phone supports them.
+- Only a box number that is in the loaded delivery stops the camera. Other barcodes on the label (the red label, the white label's own code) are shown as ignored, and scanning continues.
+
 ## Notes
 
 - No shipment data is stored in this repository. Each device loads its own file.
-- The page loads [SheetJS](https://sheetjs.com/) from cdnjs to read the spreadsheet, and [html5-qrcode](https://github.com/mebjas/html5-qrcode) the first time the camera is used, so the device needs internet. The camera only works over HTTPS.
+- The page loads [SheetJS](https://sheetjs.com/) from cdnjs to read the spreadsheet, so the device needs internet. The camera only works over HTTPS.
 - To host it, turn on GitHub Pages (Settings → Pages → Deploy from branch `main`, folder `/`).
